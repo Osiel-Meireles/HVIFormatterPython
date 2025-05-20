@@ -35,23 +35,36 @@ def atualizar_senha(usuario_id, nova_senha):
     conn.close()
 
 def login():
-    try:
-        cookies_ready = cookies._cookie_manager is not None
-    except:
-        cookies_ready = False
-
-    if cookies_ready:
-        if cookies.get("usuario_id") and not st.session_state.get("usuario_autenticado"):
-            st.session_state.usuario_autenticado = True
-            st.session_state.usuario_id = int(cookies.get("usuario_id"))
-            st.session_state.usuario_nome = cookies.get("usuario_nome")
-            st.session_state.usuario_tipo = cookies.get("usuario_tipo")
-            st.session_state.usuario_regiao = cookies.get("usuario_regiao")
-            st.session_state.senha_temporaria = False
-
+    # Inicializar o estado de sessão se não existir
     if "usuario_autenticado" not in st.session_state:
         st.session_state.usuario_autenticado = False
+    
+    # Tentar carregar os cookies com tratamento de exceção
+    try:
+        # Verificar se o usuário já está autenticado por sessão
+        if st.session_state.usuario_autenticado:
+            return True
+            
+        # Verificar se o usuário está autenticado via cookie
+        # O try/except tratará CookiesNotReady
+        if not st.session_state.usuario_autenticado:
+            try:
+                if cookies.get("usuario_id"):
+                    st.session_state.usuario_autenticado = True
+                    st.session_state.usuario_id = int(cookies.get("usuario_id"))
+                    st.session_state.usuario_nome = cookies.get("usuario_nome")
+                    st.session_state.usuario_tipo = cookies.get("usuario_tipo")
+                    st.session_state.usuario_regiao = cookies.get("usuario_regiao")
+                    st.session_state.senha_temporaria = False
+                    return True
+            except:
+                # Se os cookies não estiverem prontos, continuamos com a página de login
+                pass
+    except:
+        # Se qualquer erro ocorrer com cookies, continuamos com login normal
+        pass
 
+    # Se não houver autenticação, mostrar tela de login
     if not st.session_state.usuario_autenticado:
         st.markdown("<h3 style='text-align: center;'>Plataforma SIFHVI</h3>", unsafe_allow_html=True)
         st.markdown("<h5 style='text-align: center;'>Faça login para acessar</h5>", unsafe_allow_html=True)
@@ -68,11 +81,18 @@ def login():
                         st.session_state.usuario_tipo = usuario["tipo"]
                         st.session_state.usuario_regiao = usuario["regiao"]
                         st.session_state.senha_temporaria = usuario["senha_temporaria"]
-                        cookies["usuario_id"] = str(usuario["id"])
-                        cookies["usuario_nome"] = usuario["nome"]
-                        cookies["usuario_tipo"] = usuario["tipo"]
-                        cookies["usuario_regiao"] = usuario["regiao"]
-                        cookies.save()
+                        
+                        # Salvar cookies com tratamento de exceção
+                        try:
+                            cookies["usuario_id"] = str(usuario["id"])
+                            cookies["usuario_nome"] = usuario["nome"]
+                            cookies["usuario_tipo"] = usuario["tipo"]
+                            cookies["usuario_regiao"] = usuario["regiao"]
+                            cookies.save()
+                        except:
+                            # Se falhar ao salvar cookies, continue com autenticação pela sessão
+                            pass
+                            
                         st.rerun()
                     else:
                         st.error("Email ou senha incorretos.")
