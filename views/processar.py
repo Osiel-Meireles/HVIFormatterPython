@@ -3,6 +3,7 @@ import pandas as pd
 from io import BytesIO
 from datetime import datetime
 import importlib
+import time
 
 from services import database
 
@@ -19,6 +20,10 @@ def render():
     arquivos = st.file_uploader("Envie os PDFs", type=["pdf"], accept_multiple_files=True)
     produtor = st.text_input("Nome do produtor")
     corretora = st.text_input("Nome da corretora")
+    
+    # Opção de debug para ajudar na solução de problemas
+    mostrar_debug = st.checkbox("Mostrar informações de debug", value=False)
+    
     iniciar = st.button("🚀 Iniciar Processamento")
 
     if iniciar and arquivos and produtor and corretora:
@@ -27,30 +32,70 @@ def render():
 
             try:
                 parser_module = importlib.import_module(f"parsers.{MODELOS_PARSERS[modelo_escolhido]}")
+                if mostrar_debug:
+                    st.write(f"Parser carregado: {MODELOS_PARSERS[modelo_escolhido]}")
             except ModuleNotFoundError:
                 st.error(f"Parser para o modelo '{modelo_escolhido}' não encontrado.")
                 return
+            except Exception as e:
+                st.error(f"Erro ao carregar o parser: {str(e)}")
+                return
 
             for arq in arquivos:
-                dados, colunas, lote, safra, data_hvi = parser_module.parse_modelo(arq)
+                try:
+                    # Mostrar informações do arquivo
+                    if mostrar_debug:
+                        st.write(f"Processando arquivo: {arq.name}")
+                        st.write(f"Tamanho do arquivo: {arq.size} bytes")
+                    
+                    # Garantir que o arquivo está no início antes de processar
+                    arq.seek(0)
+                    
+                    # Processar o arquivo com o parser
+                    dados, colunas, lote, safra, data_hvi = parser_module.parse_modelo(arq)
+                    
+                    # Mostrar informações obtidas do parser
+                    if mostrar_debug:
+                        st.write(f"Lote: {lote}")
+                        st.write(f"Safra: {safra}")
+                        st.write(f"Data HVI: {data_hvi}")
+                        st.write(f"Quantidade de dados encontrados: {len(dados)}")
+                        if len(dados) > 0:
+                            st.write("Exemplo de dados:")
+                            st.write(dados[0])
 
-                if not dados:
-                    st.warning(f"{arq.name}: Nenhum dado encontrado.")
-                    continue
+                    if not dados:
+                        st.warning(f"{arq.name}: Nenhum dado encontrado.")
+                        continue
 
-                df = pd.DataFrame(dados, columns=colunas)
-                df["Produtor"] = produtor
-                df["Tipo"] = ""  
+                    df = pd.DataFrame(dados, columns=colunas)
+                    df["Produtor"] = produtor
+                    df["Tipo"] = ""  
 
-                id_fmt = database.inserir_formatacao(
-                    lote=lote,
-                    data_hvi=data_hvi,
-                    safra=safra,
-                    produtor=produtor,
-                    responsavel=st.session_state.usuario_nome
-                )
-                database.inserir_fardos(id_fmt, df, st.session_state.usuario_nome)
-                df_final = pd.concat([df_final, df], ignore_index=True)
+                    # Se debug estiver ativado, mostrar o DataFrame antes de inserir no banco
+                    if mostrar_debug:
+                        st.write("DataFrame criado:")
+                        st.write(df.head())
+
+                    id_fmt = database.inserir_formatacao(
+                        lote=lote,
+                        data_hvi=data_hvi,
+                        safra=safra,
+                        produtor=produtor,
+                        responsavel=st.session_state.usuario_nome
+                    )
+                    
+                    if mostrar_debug:
+                        st.write(f"ID da formatação criada: {id_fmt}")
+                        
+                    database.inserir_fardos(id_fmt, df, st.session_state.usuario_nome)
+                    df_final = pd.concat([df_final, df], ignore_index=True)
+                
+                except Exception as e:
+                    st.error(f"Erro ao processar {arq.name}: {str(e)}")
+                    if mostrar_debug:
+                        import traceback
+                        st.code(traceback.format_exc())
 
             if df_final.empty:
                 st.error("Nenhum dado foi processado.")
@@ -97,6 +142,11 @@ def render():
             export = df_final[colunas_export].rename(columns={
                 "MIC": "MICRONAIR", "STR": "RES", "UI": "UNF", "Rd": "RD", "+b": "+B"
             })
+
+            # Se debug estiver ativado, mostrar o DataFrame final
+            if mostrar_debug:
+                st.write("DataFrame para exportação:")
+                st.write(export.head())
 
             buffer = BytesIO()
             export.to_excel(buffer, index=False, engine="openpyxl")
