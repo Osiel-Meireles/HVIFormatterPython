@@ -29,15 +29,14 @@ def parse_modelo(pdf_file):
                 if linha.startswith("00.0."):
                     linha_formatada = linha.replace(",", ".")
                     partes = linha_formatada.split()
-                    if len(partes) == 18:
-                        # Remove os pontos do FardoID
+                    if len(partes) >= 18: 
                         partes[0] = partes[0].replace(".", "")
                         partes.insert(0, lote)
-                        dados.append(partes)
+                        dados.append(partes[:19])
 
     colunas = [
         "Lote", "FardoID", "UHML", "UHML_pol", "UI", "SFI", "STR", "ELG", "MIC", "MAT",
-        "Rd", "+b", "CG", "TrCnt", "TrAr", "TrID", "SCI", "CSP"
+        "Rd", "+b", "CG", "TrCnt", "TrAr", "TrID", "SCI", "CSP", "Produtor"
     ]
 
     return dados, colunas, lote, safra, data_hvi

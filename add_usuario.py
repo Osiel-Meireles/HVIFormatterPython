@@ -6,4 +6,3 @@ users.adicionar_usuario(
     tipo="admin",     # ou "usuario"
     regiao="BA"       # ou "MT"
 )
-

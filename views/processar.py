@@ -6,10 +6,10 @@ import importlib
 
 from services import database
 
-# Dicionário de modelos disponíveis
+
 MODELOS_PARSERS = {
     "Abapa": "parser_abapa",
-    "CottonMax": "parser_cottonmax",  # futuro parser
+    "CottonMax": "parser_cottonmax",
 }
 
 def render():
@@ -40,6 +40,7 @@ def render():
 
                 df = pd.DataFrame(dados, columns=colunas)
                 df["Produtor"] = produtor
+                df["Tipo"] = ""  
 
                 id_fmt = database.inserir_formatacao(
                     lote=lote,
@@ -55,7 +56,6 @@ def render():
                 st.error("Nenhum dado foi processado.")
                 return
 
-            # Conversões e ajustes
             def mm_para_pol(valor):
                 try:
                     return round((float(valor) / 1000) * 39.3701, 2)
@@ -68,17 +68,33 @@ def render():
                 except:
                     return valor
 
-            df_final["UHML"] = df_final["UHML_mm"].apply(mm_para_pol)
-            df_final["MAT"] = df_final["MAT"].apply(multiplicar_mat)
-            df_final["CG"] = df_final["CG"].astype(str).str.replace("-", ".")
-            df_final["FardoID"] = df_final["FardoID"].astype(str).str.replace(".", "")
+           
+            if "UHML" in df_final.columns:
+                df_final["UHML_pol"] = df_final["UHML"].apply(mm_para_pol)
+            
+            if "MAT" in df_final.columns:
+                df_final["MAT"] = df_final["MAT"].apply(multiplicar_mat)
+                
+            if "CG" in df_final.columns:
+                df_final["CG"] = df_final["CG"].astype(str).str.replace("-", ".")
+                
+            if "FardoID" in df_final.columns:
+                df_final["FardoID"] = df_final["FardoID"].astype(str).str.replace(".", "")
+                
             df_final["PESO"] = ""
-            df_final["Tipo"] = ""
 
-            export = df_final[[
+           
+            colunas_export = [
                 "Lote", "FardoID", "MIC", "UHML", "STR", "PESO", "SFI", "UI", "CSP",
                 "ELG", "Rd", "+b", "TrID", "SCI", "MAT", "CG", "Produtor", "Tipo"
-            ]].rename(columns={
+            ]
+            
+         
+            for col in colunas_export:
+                if col not in df_final.columns:
+                    df_final[col] = ""
+
+            export = df_final[colunas_export].rename(columns={
                 "MIC": "MICRONAIR", "STR": "RES", "UI": "UNF", "Rd": "RD", "+b": "+B"
             })
 

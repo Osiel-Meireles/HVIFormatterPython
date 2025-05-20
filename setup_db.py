@@ -38,28 +38,27 @@ def recriar_banco():
     )
     """)
 
-    # Cria tabela de fardos
+    # Cria tabela de fardos - Corrigida para corresponder ao que é usado em services/database.py
     cursor.execute("""
     CREATE TABLE fardos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         formatacao_id INTEGER,
         fardo_id TEXT,
-        uhml_mm REAL,
-        uhml_pol REAL,
-        ui REAL,
-        sfi REAL,
-        str REAL,
-        elg REAL,
         mic REAL,
-        mat REAL,
+        uhml REAL,
+        str REAL,
+        sfi REAL,
+        ui REAL,
+        csp REAL,
+        elg REAL,
         rd REAL,
         b REAL,
-        cgrd TEXT,
-        trcnt REAL,
-        trar REAL,
         trid TEXT,
         sci REAL,
-        csp REAL
+        mat REAL,
+        cg TEXT,
+        produtor TEXT,
+        tipo TEXT
     )
     """)
 

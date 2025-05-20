@@ -66,10 +66,11 @@ def inserir_formatacao(lote, data_hvi, safra, produtor, responsavel):
     conn = conectar()
     cursor = conn.cursor()
     data_formatacao = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
 
     cursor.execute("""
-        INSERT INTO formatacoes (lote, data_formatacao, data_hvi, safra, produtor, responsavel)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO formatacoes (lote, data_formatacao, data_hvi, safra, produtor, usuario_id, responsavel)
+        VALUES (?, ?, ?, ?, ?, NULL, ?)
     """, (lote, data_formatacao, data_hvi, safra, produtor, responsavel))
 
     conn.commit()
@@ -82,29 +83,31 @@ def inserir_fardos(formatacao_id, df, usuario_nome):
     cursor = conn.cursor()
 
     for _, row in df.iterrows():
+        fardo_id = row.get("FardoID", "")
+        mic = float(row.get("MIC", 0)) if str(row.get("MIC", "")).replace(".", "", 1).isdigit() else None
+        uhml = float(row.get("UHML", 0)) if str(row.get("UHML", "")).replace(".", "", 1).isdigit() else None
+        str_val = float(row.get("STR", 0)) if str(row.get("STR", "")).replace(".", "", 1).isdigit() else None
+        sfi = float(row.get("SFI", 0)) if str(row.get("SFI", "")).replace(".", "", 1).isdigit() else None
+        ui = float(row.get("UI", 0)) if str(row.get("UI", "")).replace(".", "", 1).isdigit() else None
+        csp = float(row.get("CSP", 0)) if str(row.get("CSP", "")).replace(".", "", 1).isdigit() else None
+        elg = float(row.get("ELG", 0)) if str(row.get("ELG", "")).replace(".", "", 1).isdigit() else None
+        rd = float(row.get("Rd", 0)) if str(row.get("Rd", "")).replace(".", "", 1).isdigit() else None
+        b = float(row.get("+b", 0)) if str(row.get("+b", "")).replace(".", "", 1).isdigit() else None
+        trid = row.get("TrID", "")
+        sci = float(row.get("SCI", 0)) if str(row.get("SCI", "")).replace(".", "", 1).isdigit() else None
+        mat = float(row.get("MAT", 0)) if str(row.get("MAT", "")).replace(".", "", 1).isdigit() else None
+        cg = row.get("CG", "")
+        produtor = row.get("Produtor", "")
+        tipo = row.get("Tipo", "")
+
         cursor.execute("""
             INSERT INTO fardos (
                 formatacao_id, fardo_id, mic, uhml, str, sfi, ui, csp, elg,
                 rd, b, trid, sci, mat, cg, produtor, tipo
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            formatacao_id,
-            row["FardoID"],
-            float(row["MIC"]) if str(row["MIC"]).replace(".", "", 1).isdigit() else None,
-            float(row["UHML"]) if str(row["UHML"]).replace(".", "", 1).isdigit() else None,
-            float(row["STR"]) if str(row["STR"]).replace(".", "", 1).isdigit() else None,
-            float(row["SFI"]) if str(row["SFI"]).replace(".", "", 1).isdigit() else None,
-            float(row["UI"]) if str(row["UI"]).replace(".", "", 1).isdigit() else None,
-            float(row["CSP"]) if str(row["CSP"]).replace(".", "", 1).isdigit() else None,
-            float(row["ELG"]) if str(row["ELG"]).replace(".", "", 1).isdigit() else None,
-            float(row["Rd"]) if str(row["Rd"]).replace(".", "", 1).isdigit() else None,
-            float(row["+b"]) if str(row["+b"]).replace(".", "", 1).isdigit() else None,
-            row["TrID"],
-            float(row["SCI"]) if str(row["SCI"]).replace(".", "", 1).isdigit() else None,
-            float(row["MAT"]) if str(row["MAT"]).replace(".", "", 1).isdigit() else None,
-            row["CG"],
-            row["Produtor"],
-            row["Tipo"]
+            formatacao_id, fardo_id, mic, uhml, str_val, sfi, ui, csp, elg,
+            rd, b, trid, sci, mat, cg, produtor, tipo
         ))
 
     conn.commit()
@@ -147,13 +150,13 @@ def consultar_registros_completos():
     cursor = conn.cursor()
     cursor.execute("""
         SELECT f.lote, fa.fardo_id, fa.mic, fa.uhml, fa.str, fa.sfi, fa.ui, fa.csp, fa.elg,
-               fa.rd, fa.b, fa.trid, fa.sci, fa.mat, fa.cg, fa.produtor, fa.tipo
+               fa.rd, fa.b, fa.trid, fa.sci, fa.mat, fa.cg, fa.produtor, fa.tipo, f.safra
         FROM fardos fa
         JOIN formatacoes f ON fa.formatacao_id = f.id
     """)
     colunas = [
         "Lote", "FardoID", "MIC", "UHML", "STR", "SFI", "UI", "CSP", "ELG",
-        "Rd", "+b", "TrID", "SCI", "MAT", "CG", "Produtor", "Tipo"
+        "Rd", "+b", "TrID", "SCI", "MAT", "CG", "Produtor", "Tipo", "Safra"
     ]
     rows = cursor.fetchall()
     conn.close()

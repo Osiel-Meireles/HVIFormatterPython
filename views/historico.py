@@ -10,15 +10,21 @@ def render():
 
     dados = database.listar_formatacoes()
 
-    if st.session_state.usuario_tipo != "admin":
-        dados = [d for d in dados if d[7] == st.session_state.usuario_nome]
-
     if not dados:
         st.info("Nenhuma formatação registrada.")
         return
 
+
+    if st.session_state.get("usuario_tipo") != "admin":
+        usuario_nome = st.session_state.get("usuario_nome", "")
+        dados = [d for d in dados if d[6] == usuario_nome]
+
+    if not dados:
+        st.info("Você não tem formatações registradas.")
+        return
+
     df = pd.DataFrame(dados, columns=[
-        "ID", "Lote", "Safra", "Produtor", "Data HVI", "Data Formatação", "Qtd Fardos", "Responsável"
+        "ID", "Lote", "Safra", "Produtor", "Data HVI", "Data Formatação", "Responsável", "Qtd Fardos"
     ])
     st.dataframe(df)
 
@@ -30,7 +36,7 @@ def render():
         st.warning("Nenhum fardo encontrado para esta formatação.")
         return
 
-    # Formatar colunas numéricas
+
     def converter_uhml(valor):
         try:
             return round((float(valor) / 1000) * 39.3701, 2)
@@ -43,17 +49,41 @@ def render():
         except:
             return valor
 
-    fardos["UHML"] = fardos["UHML_mm"].apply(converter_uhml)
-    fardos["MAT"] = fardos["MAT"].apply(multiplicar_mat)
-    fardos["CG"] = fardos["CG"].astype(str).str.replace("-", ".")
-    fardos["PESO"] = ""
-    fardos["Tipo"] = ""
 
-    export = fardos[[
-        "Lote", "FardoID", "MIC", "UHML", "STR", "PESO", "SFI", "UI", "CSP",
+    if "UHML" in fardos.columns:
+        fardos["UHML_pol"] = fardos["UHML"].apply(converter_uhml)
+    else:
+        fardos["UHML_pol"] = ""
+        
+    if "MAT" in fardos.columns:
+        fardos["MAT"] = fardos["MAT"].apply(multiplicar_mat)
+        
+    if "CG" in fardos.columns:
+        fardos["CG"] = fardos["CG"].astype(str).str.replace("-", ".")
+        
+    fardos["PESO"] = ""
+    
+    if "Tipo" not in fardos.columns:
+        fardos["Tipo"] = ""
+    
+
+    colunas_export = [
+        "Lote", "FardoID", "MIC", "UHML_pol", "STR", "PESO", "SFI", "UI", "CSP",
         "ELG", "Rd", "+b", "TrID", "SCI", "MAT", "CG", "Produtor", "Tipo"
-    ]].rename(columns={
-        "MIC": "MICRONAIR", "STR": "RES", "UI": "UNF", "Rd": "RD", "+b": "+B"
+    ]
+    
+    for col in colunas_export:
+        if col not in fardos.columns:
+            fardos[col] = ""
+    
+    export = fardos[colunas_export].rename(columns={
+        "MIC": "MICRONAIR", 
+        "UHML_pol": "UHML", 
+        "STR": "RES", 
+        "UI": "UNF", 
+        "Rd": "RD", 
+        "+b": "+B",
+        "TrID": "LEAF"
     })
 
     st.success(f"{len(export)} fardos encontrados.")

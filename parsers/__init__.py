@@ -1,2 +1,2 @@
-from . import parser_abapa
+from parsers import parser_abapa
 
