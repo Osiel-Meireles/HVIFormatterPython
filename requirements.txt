@@ -1,0 +1,9 @@
+streamlit
+pdfplumber
+pandas
+openpyxl
+bcrypt
+python-dotenv
+streamlit-cookies-manager
+email-validator
+openpyxl
